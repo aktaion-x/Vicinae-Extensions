@@ -1,0 +1,55 @@
+{
+  "$schema": "https://raw.githubusercontent.com/vicinaehq/vicinae/refs/heads/main/extra/schemas/extension.json",
+  "name": "note-taking",
+  "title": "Local",
+  "description": "Take note and save them to your local pc",
+  "categories": [],
+  "license": "MIT",
+  "author": "Aktaion",
+  "contributors": [],
+  "pastContributors": [],
+  "icon": "extension_icon.png",
+  "commands": [
+   
+    {
+      "name": "list-notes",
+      "title": "List Notes |",
+      "description": "My command does this and that",
+      "mode": "view"
+    },
+    {
+      "name": "create-note",
+      "title": "Create Notes |",
+      "description": "My command does this and that",
+      "mode": "view"
+    },
+    {
+      "name": "take-note",
+      "title": "Take Notes |",
+      "description": "My command does this and that",
+      "mode": "no-view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "notesDirectory",
+      "title": "Notes Directory",
+      "description": "Directory containing your notes",
+      "type": "directory",
+      "required": true
+    }
+  ],
+  "scripts": {
+    "build": "vici build",
+    "dev": "vici develop",
+    "format": "biome format --write src",
+    "lint": "vici lint"
+  },
+  "dependencies": {
+    "@vicinae/api": "^0.29.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.2",
+    "typescript": "^5.9.2"
+  }
+}
