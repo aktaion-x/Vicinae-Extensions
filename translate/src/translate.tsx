@@ -1,33 +1,62 @@
+
 import { useEffect, useState } from "react";
-import {translate} from "../vendor/@iamtraction-translate/src";
-import { Detail, getSelectedText } from "@vicinae/api";
+import translate from "google-translate-extended-api";
+import { Detail } from "@vicinae/api";
 
 export default function ViewTranslate() {
-    const [translation, setTranslation] = useState<string>("")
-    useEffect(() => {
-        async function load() {
-            const selectedText = await getSelectedText();
-            if (!selectedText) return;
-            const response = await simpleTranslate(selectedText)
-            console.log(response);
-            setTranslation(`**${response}**`)
+  const [translation, setTranslation] = useState("Loading...");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const word = "console";
+        console.log(word);
+
+        const response = await translate(word, "en", "ar");
+
+        if (cancelled) return;
+
+        setTranslation(
+          `****\n\n` +
+          `**Translation:**` +
+          `**Detected language:**`
+        );
+      } catch (error: unknown) {
+        console.error("Dictionary lookup failed:", error);
+
+        if (!cancelled) {
+          setTranslation(
+            "Translation failed. Check the network connection and try again."
+          );
         }
-        load()
-    }, [])
-    return (
-        <Detail markdown={translation} />
-    )
+      }
+    }
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return <Detail markdown={translation} />;
 }
 
-
-
-
-export async function simpleTranslate(text:string): Promise<any>{
+async function main(text: string) {
   try {
-    const response = await translate(text, { to: 'ar' })
-    console.log("response:",response);
-    return response.text;
+    const result = await translate(text, 'en', 'ar');
+    console.log({ result });
+
+    return result;
   } catch (error) {
-    console.error(error);
-  }  
+    if (error instanceof Error) {
+      console.error("Name:", error.name);
+      console.error("Message:", error.message);
+      console.error("Stack:", error.stack);
+    }
+
+    console.dir(error, { depth: 10 }); throw (error);
+  }
 }

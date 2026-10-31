@@ -11,7 +11,7 @@ export default function ViewTranslate() {
     async function load() {
       const selectedText = await getSelectedText();
       if (!selectedText) return;
-      setWord(selectedText)
+      setWord(selectedText);
     }
     load()
   }, [])
@@ -50,8 +50,8 @@ export default function ViewTranslate() {
       {wordList.map((suggestion) => (
         <List.Item title={suggestion} key={suggestion} actions={
           <ActionPanel>
-            <Action.Paste title="Paste suggestion" content={suggestion} />
-            <Action.CopyToClipboard content={suggestion} />
+            <Action.Paste title="Paste suggestion" content={`${suggestion}${word.split('')[word.length - 1] === ' ' ? " " : ''}`} />
+            <Action.CopyToClipboard content={`${suggestion}`} />
             <Action title="Toggle bad spellings" onAction={() => setDeepSearch(!deepSearch)} />
           </ActionPanel>
         } />
