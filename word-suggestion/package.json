@@ -19,16 +19,22 @@
   ],
   "preferences": [],
   "scripts": {
-    "build": "vici build",
+    "build": "vici build && mkdir -p ~/.local/share/vicinae/extensions/word-suggestion/dict && cp -r node_modules/wordnet-db/dict/. ~/.local/share/vicinae/extensions/word-suggestion/dict/",
     "dev": "vici develop",
     "format": "biome format --write src",
     "lint": "vici lint"
   },
   "dependencies": {
-    "@vicinae/api": "^0.29.2"
+    "@vicinae/api": "^0.29.2",
+    "wordnet": "^2.0.0",
+    "wordnet-db": "^3.1.14"
   },
   "devDependencies": {
-    "typescript": "^5.9.2",
-    "@biomejs/biome": "2.3.2"
-  }
+    "@biomejs/biome": "2.3.2",
+    "typescript": "^5.9.2"
+  },
+  "external": [
+    "wordnet",
+    "wordnet-db"
+  ]
 }

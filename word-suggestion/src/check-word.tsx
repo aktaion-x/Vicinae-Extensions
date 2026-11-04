@@ -1,17 +1,31 @@
 import { useEffect, useState } from "react";
-import { spawn } from "node:child_process";
-import { Action, getSelectedText, ActionPanel, List } from "@vicinae/api";
+import { Action, getSelectedText, ActionPanel, List, Detail, Icon } from "@vicinae/api";
+import { define, initializeWordnet, WordDefinition } from "./word-definition";
+import { suggestCorrections } from "./word-suggestion";
+import path from "node:path";
+import wordnet from "wordnet";
+
+interface WordResult {
+  word: string;
+  definitions: WordDefinition[];
+}
 
 export default function ViewTranslate() {
   const [wordList, setWordList] = useState<string[]>([]);
   const [deepSearch, setDeepSearch] = useState(false);
   const [word, setWord] = useState("");
-  const [isLoading, setIsLoading] = useState(false)
+  const [definitions, setDefinitions] = useState<WordResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isShowingDetail, setIsShowingDetail] = useState(false);
   useEffect(() => {
     async function load() {
-      const selectedText = await getSelectedText();
-      if (!selectedText) return;
-      setWord(selectedText);
+      try {
+        const selectedText = await getSelectedText();
+        if (!selectedText) return;
+        setWord(selectedText);
+      } catch (error) {
+        console.error(`Error 27: ${error}`)
+      }
     }
     load()
   }, [])
@@ -21,11 +35,15 @@ export default function ViewTranslate() {
       setWordList([]);
       return;
     }
-
     const timeout = setTimeout(async () => {
       try {
+        console.log('run');
+
         const suggestions = await suggestCorrections(word, deepSearch);
+        const definitionList = await getDefinitions(suggestions);
+
         setWordList(suggestions);
+        setDefinitions(definitionList);
       } catch (error) {
         console.error("Spellcheck failed:", error);
         setWordList([]);
@@ -42,20 +60,44 @@ export default function ViewTranslate() {
     <List
       searchBarPlaceholder='Spell word...'
       searchText={word}
+      isShowingDetail={isShowingDetail}
       onSearchTextChange={(text) => {
         setWord(text);
         setIsLoading(text ? true : false);
       }}
+      navigationTitle={` ${wordList.length > 1 ? wordList.length + ' - Suggestions' : 'No suggestions'}`}
       isLoading={isLoading}>
-      {wordList.map((suggestion) => (
-        <List.Item title={suggestion} key={suggestion} actions={
-          <ActionPanel>
-            <Action.Paste title="Paste suggestion" content={`${suggestion}${word.split('')[word.length - 1] === ' ' ? " " : ''}`} />
-            <Action.CopyToClipboard content={`${suggestion}`} />
-            <Action title="Toggle bad spellings" onAction={() => setDeepSearch(!deepSearch)} />
-          </ActionPanel>
-        } />
-      ))}
+      {wordList.map((suggestion, i) => {
+        const definition = definitions?.find(w => w.word === suggestion);
+        return (
+          <List.Item title={suggestion} key={suggestion} icon={Icon.Hashtag}
+            accessories={[
+              { tag: definition?.definitions.length ? `${definition.definitions.length}` : undefined }
+            ]}
+            detail={
+              <>
+                {definition && (
+                  <List.Item.Detail markdown={`# ${definition.word}\n\n${definition.definitions
+                    .map(d => `Type: ${d.type}\n\nDefinition: ${d.definition}\n\n---\n\n`)
+                    .join('')}`} />
+                )}
+              </>
+            }
+            subtitle={definition?.definitions[0]?.definition}
+            actions={
+              <ActionPanel>
+                {suggestion !== word && (
+                  <>
+                    <Action.Paste title="Paste suggestion" content={`${suggestion}${word.split('')[word.length - 1] === ' ' ? " " : ''}`} />
+                    <Action.CopyToClipboard content={`${suggestion}`} />
+                    <Action shortcut={{ modifiers: ['ctrl'], key: 'e' }} title="Toggle showing details" onAction={() => setIsShowingDetail(!isShowingDetail)} />
+                    <Action shortcut={{ modifiers: ['ctrl'], key: 'o' }} title="Toggle extended suggestions" onAction={() => setDeepSearch(!deepSearch)} />
+                  </>
+                )}
+              </ActionPanel>
+            } />
+        )
+      })}
     </List>
   );
 }
@@ -63,51 +105,25 @@ export default function ViewTranslate() {
 
 
 
-async function suggestCorrections(word: string, deepSearch: boolean): Promise<string[]> {
-  return new Promise((resolve, reject) => {
-    const child = spawn("aspell", [
-      "-a",
-      `--sug-mode=${deepSearch ? "bad-spellers" : "slow"}`,
-      "--lang=en",
-      "--encoding=utf-8",
-    ]);
 
-    let stdout = "";
-    let stderr = "";
 
-    child.stdout.setEncoding("utf8");
-    child.stderr.setEncoding("utf8");
+async function getDefinitions(words: string[]) {
+  try {
+    await initializeWordnet();
 
-    child.stdout.on("data", (data: string) => {
-      stdout += data;
-    });
+    const output: WordResult[] = [];
 
-    child.stderr.on("data", (data: string) => {
-      stderr += data;
-    });
+    for (const word of words) {
+      const definitions = await define(
+        word.toLocaleLowerCase()
+      );
 
-    child.on("error", reject);
+      output.push({ word, definitions });
+    }
 
-    child.on("close", (code) => {
-      if (code !== 0) {
-        reject(new Error(stderr || `Aspell exited with code ${code}`));
-        return;
-      }
-
-      const line = stdout
-        .split(/\r?\n/)
-        .find((line) => line.startsWith("&") || line.startsWith("#"));
-
-      if (!line || line.startsWith("#")) {
-        resolve([]);
-        return;
-      }
-
-      const match = line.match(/^&\s+.+?\s+\d+\s+\d+:\s*(.*)$/);
-
-      resolve(match ? match[1].split(/,\s*/) : []);
-    });
-
-    child.stdin.end(word + "\n");
-  });
+    return output;
+  } catch (error) {
+    console.error("WordNet error:", error);
+    return [];
+  }
 }
