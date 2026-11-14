@@ -19,9 +19,8 @@ export function initializeWordnet() {
 
   return wordnetInit;
 }
-export async function define(
-  word: string
-): Promise<WordDefinition[]> {
+
+export async function define(word: string): Promise<WordDefinition[]> {
   try {
     const results = await wordnet.lookup(word);
 

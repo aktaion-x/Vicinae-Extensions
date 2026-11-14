@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { Action, getSelectedText, ActionPanel, List, Detail, Icon } from "@vicinae/api";
 import { define, initializeWordnet, WordDefinition } from "./word-definition";
 import { suggestCorrections } from "./word-suggestion";
-import path from "node:path";
-import wordnet from "wordnet";
+import { spawn } from 'node:child_process';
 
 interface WordResult {
   word: string;
@@ -12,11 +11,12 @@ interface WordResult {
 
 export default function ViewTranslate() {
   const [wordList, setWordList] = useState<string[]>([]);
-  const [deepSearch, setDeepSearch] = useState(false);
+  const [isDeepSearch, setIsDeepSearch] = useState(false);
   const [word, setWord] = useState("");
   const [definitions, setDefinitions] = useState<WordResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isShowingDetail, setIsShowingDetail] = useState(false);
+
   useEffect(() => {
     async function load() {
       try {
@@ -24,7 +24,9 @@ export default function ViewTranslate() {
         if (!selectedText) return;
         setWord(selectedText);
       } catch (error) {
-        console.error(`Error 27: ${error}`)
+        console.log(`${error}`)
+      } finally {
+        setIsLoading(false)
       }
     }
     load()
@@ -39,11 +41,14 @@ export default function ViewTranslate() {
       try {
         console.log('run');
 
-        const suggestions = await suggestCorrections(word, deepSearch);
+
+        const suggestions = await suggestCorrections(word, isDeepSearch);
         const definitionList = await getDefinitions(suggestions);
+        console.log({ definitionList });
 
         setWordList(suggestions);
         setDefinitions(definitionList);
+        clearSelection();
       } catch (error) {
         console.error("Spellcheck failed:", error);
         setWordList([]);
@@ -54,7 +59,7 @@ export default function ViewTranslate() {
 
     // Cancel the timer if the user types again.
     return () => clearTimeout(timeout);
-  }, [word, deepSearch]);
+  }, [word, isDeepSearch]);
 
   return (
     <List
@@ -88,10 +93,10 @@ export default function ViewTranslate() {
               <ActionPanel>
                 {suggestion !== word && (
                   <>
-                    <Action.Paste title="Paste suggestion" content={`${suggestion}${word.split('')[word.length - 1] === ' ' ? " " : ''}`} />
+                    <Action.Paste title="Paste suggestion" content={`${word.split('')[0] === ' ' ? " " : ''}${suggestion}${word.split('')[word.length - 1] === ' ' ? " " : ''}`} />
                     <Action.CopyToClipboard content={`${suggestion}`} />
-                    <Action shortcut={{ modifiers: ['ctrl'], key: 'e' }} title="Toggle showing details" onAction={() => setIsShowingDetail(!isShowingDetail)} />
-                    <Action shortcut={{ modifiers: ['ctrl'], key: 'o' }} title="Toggle extended suggestions" onAction={() => setDeepSearch(!deepSearch)} />
+                    <Action shortcut={{ modifiers: ['ctrl'], key: 'e' }} title={`${isShowingDetail ? "Hide" : "Show"} details`} onAction={() => setIsShowingDetail(!isShowingDetail)} />
+                    <Action shortcut={{ modifiers: ['ctrl'], key: 'o' }} title={`${isDeepSearch ? "Shrink" : "Extend"} suggestions`} onAction={() => setIsDeepSearch(!isDeepSearch)} />
                   </>
                 )}
               </ActionPanel>
@@ -102,10 +107,25 @@ export default function ViewTranslate() {
   );
 }
 
+async function clearSelection(): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const proc = spawn('xclip', ['-selection', 'primary']);
 
+    proc.on('error', (error: Error) => {
+      reject(error);
+    });
 
+    proc.on('close', (code: number | null) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`xclip exited with code ${code}`));
+      }
+    });
 
-
+    proc.stdin.end();
+  });
+}
 
 async function getDefinitions(words: string[]) {
   try {

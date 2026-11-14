@@ -15,6 +15,12 @@
       "title": "File Explorer |",
       "description": "Explore linux files",
       "mode": "view"
+    },
+    {
+      "name": "test",
+      "title": "Test Explorer |",
+      "description": "Explore linux files",
+      "mode": "view"
     }
   ],
   "preferences": [],
