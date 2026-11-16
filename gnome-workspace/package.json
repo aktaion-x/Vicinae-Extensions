@@ -15,6 +15,12 @@
       "title": "Manage Workspaces",
       "description": "Manage gnome workspaces",
       "mode": "view"
+    },
+    {
+      "name": "hypr-workspaces",
+      "title": "Hypr Workspaces",
+      "description": "Manage Hypr workspaces",
+      "mode": "view"
     }
   ],
   "preferences": [],
